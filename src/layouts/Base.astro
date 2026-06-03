@@ -51,8 +51,25 @@ const {
       }
 
       let revealIO: IntersectionObserver | null = null;
+      function splitChars() {
+        document.querySelectorAll<HTMLElement>(".reveal-chars:not([data-split])").forEach((el) => {
+          const text = el.textContent || "";
+          el.setAttribute("data-split", "");
+          el.setAttribute("aria-label", text);
+          el.textContent = "";
+          Array.from(text).forEach((ch, i) => {
+            const s = document.createElement("span");
+            s.className = "rchar";
+            s.setAttribute("aria-hidden", "true");
+            s.textContent = ch === " " ? " " : ch;
+            s.style.transitionDelay = `${i * 35}ms`;
+            el.appendChild(s);
+          });
+        });
+      }
       function setupReveals() {
-        const els = document.querySelectorAll<HTMLElement>(".reveal");
+        splitChars();
+        const els = document.querySelectorAll<HTMLElement>(".reveal, .reveal-chars");
         if (reduce) {
           els.forEach((el) => el.classList.add("is-in"));
           return;

@@ -55,8 +55,8 @@ html {
 }
 
 body {
-  /* 文書全体にかかる縦グラデ: 上=明るい → 下=深い暖色（スクロールで見える）*/
-  background: linear-gradient(180deg, #f9f5ea 0%, #e8e0ce 50%, #d2c6a8 100%);
+  /* ビューポート固定の縦グラデ: 画面内で常に 上=明→下=深 が見える */
+  background: linear-gradient(180deg, #faf6ec 0%, #e7dfcc 52%, #ccbe9d 100%) fixed;
   min-height: 100vh;
   color: var(--text);
   font-family: var(--font-sans);
@@ -145,16 +145,29 @@ body::after {
 /* ---- scroll reveal (IntersectionObserver で .is-in を付与) ---- */
 .reveal {
   opacity: 0;
-  transform: translateY(22px);
+  transform: translateY(18px);
+  filter: blur(8px);
   transition:
     opacity 0.9s var(--ease),
-    transform 0.9s var(--ease);
+    transform 0.9s var(--ease),
+    filter 0.9s var(--ease);
   transition-delay: var(--reveal-delay, 0ms);
-  will-change: opacity, transform;
+  will-change: opacity, transform, filter;
 }
-.reveal.is-in { opacity: 1; transform: none; }
+.reveal.is-in { opacity: 1; transform: none; filter: blur(0); }
+
+/* 見出し: 1文字ずつ立ち上がる（scroll で in/out 連動） */
+.reveal-chars .rchar {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.6em);
+  transition: opacity 0.5s var(--ease), transform 0.6s var(--ease);
+}
+.reveal-chars.is-in .rchar { opacity: 1; transform: none; }
+
 @media (prefers-reduced-motion: reduce) {
-  .reveal { opacity: 1; transform: none; }
+  .reveal { opacity: 1; transform: none; filter: none; }
+  .reveal-chars .rchar { opacity: 1; transform: none; }
 }
 
 /* ---- link with subtle underline animation ---- */

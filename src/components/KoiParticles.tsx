@@ -151,7 +151,7 @@ const gustVert = /* glsl */ `
   uniform vec2 uGustCenter[${GUSTS}]; uniform float uGustStart[${GUSTS}]; uniform float uGustAngle[${GUSTS}];
   uniform float uGustScale[${GUSTS}]; uniform float uGustLife[${GUSTS}]; uniform float uGustSeed[${GUSTS}];
   uniform vec4 uTextRect[${NRECT}];
-  attribute float aGust,aU,aV,aRand; varying float vA;
+  attribute float aGust,aU,aV,aRand; varying float vA; varying float vTone;
   void main(){
     vec2 c=vec2(9999.0); float st=-999.0, ang=0.0, sc=1.0, lf=6.0, seed=0.0;
     for(int i=0;i<${GUSTS};i++){ if(abs(float(i)-aGust)<0.5){ c=uGustCenter[i]; st=uGustStart[i]; ang=uGustAngle[i]; sc=uGustScale[i]; lf=uGustLife[i]; seed=uGustSeed[i]; } }
@@ -164,13 +164,14 @@ const gustVert = /* glsl */ `
     float K = 7.0 + sin(seed)*2.0;
     float ph = u*K + wob + uTime*2.7 + aRand*0.6;
     float crest = sin(ph);
-    float bright = smoothstep(0.2, 0.95, crest); // crest頂部だけ＝波の線
+    vTone = crest;
+    float band = smoothstep(0.5, 0.95, abs(crest)); // crest頂部だけ＝波の線
     float X = u*patchU + (aRand-0.5)*patchU*0.02;
     float Y = v*patchV + crest*patchV*0.025;
     float env = smoothstep(1.0,0.6,abs(u)) * smoothstep(1.0,0.5,abs(v));
     env *= 0.6 + 0.4*sin(v*4.0+u*2.5+seed*2.0); // 密度・縁を不均一に（不規則さ）
     float fade = smoothstep(0.0,0.15,tt) * smoothstep(1.0,0.6,tt);
-    float baseA = max(0.0, bright*env*fade);
+    float baseA = max(0.0, band*env*fade);
     float cs=cos(ang), sn=sin(ang);
     vec2 world=c+vec2(X*cs-Y*sn, X*sn+Y*cs);
     gl_PointSize=uSize*uDpr;
@@ -180,8 +181,12 @@ const gustVert = /* glsl */ `
     vA = baseA * dim;
   }`;
 const gustFrag = /* glsl */ `
-  precision mediump float; uniform vec3 uColor; varying float vA;
-  void main(){ vec2 cc=gl_PointCoord-0.5; float a=smoothstep(0.5,0.2,length(cc)); if(a<0.02)discard; gl_FragColor=vec4(uColor,a*vA*0.55); }`;
+  precision mediump float; uniform vec3 uColorLight, uColorDark; varying float vA; varying float vTone;
+  void main(){
+    vec2 cc=gl_PointCoord-0.5; float a=smoothstep(0.5,0.2,length(cc)); if(a<0.02)discard;
+    vec3 col = mix(uColorDark, uColorLight, smoothstep(-0.25,0.25,vTone)); // 谷=暗 / 稜線=明
+    gl_FragColor=vec4(col, a*vA*0.72);
+  }`;
 
 function shortAngle(a: number) { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; }
 function rnd(min: number, max: number) { return min + Math.random() * (max - min); }
@@ -247,7 +252,8 @@ function Scene({ reduce }: { reduce: boolean }) {
     uGustLife: { value: new Array(GUSTS).fill(6) as number[] },
     uGustSeed: { value: new Array(GUSTS).fill(0) as number[] },
     uTextRect: { value: textRect },
-    uColor: { value: new THREE.Color("#b9ad92") },
+    uColorLight: { value: new THREE.Color("#f2ead6") },
+    uColorDark: { value: new THREE.Color("#5e5440") },
   }), [dpr, textRect]);
 
   const S = useRef<any>(null);
