@@ -1,0 +1,87 @@
+---
+import { ClientRouter } from "astro:transitions";
+import "../styles/global.css";
+import KoiParticles from "../components/KoiParticles.tsx";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+const {
+  title = "Portfolio",
+  description = "ソフトウェアエンジニアのポートフォリオ。設計の言語化と引き算のUX。",
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Shippori+Mincho:wght@500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <ClientRouter />
+  </head>
+  <body>
+    <div class="koi-layer"><KoiParticles client:only="react" /></div>
+    <div class="content"><slot /></div>
+
+    <script>
+      import Lenis from "lenis";
+
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      let lenis: any = null;
+
+      function startLenis() {
+        if (reduce || lenis) return;
+        lenis = new Lenis({ duration: 1.1, smoothWheel: true });
+        function raf(time: number) {
+          lenis?.raf(time);
+          requestAnimationFrame(raf);
+        }
+        requestAnimationFrame(raf);
+      }
+
+      let revealIO: IntersectionObserver | null = null;
+      function setupReveals() {
+        const els = document.querySelectorAll<HTMLElement>(".reveal");
+        if (reduce) {
+          els.forEach((el) => el.classList.add("is-in"));
+          return;
+        }
+        revealIO?.disconnect();
+        // ポップイン/アウト（上下両方向）。ただし入る/出る閾値を分け、
+        // 間を不感帯にして境界の「がくがく」(transform→再交差のフィードバック)を防ぐ。
+        revealIO = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((e) => {
+              const el = e.target as HTMLElement;
+              if (e.intersectionRatio > 0.2) el.classList.add("is-in");
+              else if (e.intersectionRatio < 0.03) el.classList.remove("is-in");
+              // 0.03〜0.2 はヒステリシス帯: 状態を維持して振動させない
+            });
+          },
+          { threshold: [0, 0.03, 0.2, 0.5, 1] }
+        );
+        els.forEach((el) => revealIO!.observe(el));
+      }
+
+      function init() {
+        startLenis();
+        setupReveals();
+      }
+
+      // 初回 + View Transitions 後の両方で初期化
+      init();
+      document.addEventListener("astro:page-load", setupReveals);
+    </script>
+  </body>
+</html>
